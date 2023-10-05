@@ -129,7 +129,7 @@ load_project :: proc(query: string, projects: ^Projects) {
 		fmt.printf("Switching to \"%v\"\n", project)
 		change_directory(path)
 
-		// Creates child shell process in new directory
+		// Creates child shell process in project directory
 		system(os.get_env("SHELL"))
 	}
 }
@@ -186,6 +186,7 @@ open_project :: proc(query: string, projects: ^Projects) {
 		return
 	}
 
+	// Xcode workspace
 	xcworkspace_glob := filepath.join({path, "*.xcworkspace"})
 	if xcworkspaces, _ := filepath.glob(xcworkspace_glob); xcworkspaces != nil {
 		fmt.printf("Opening \"%v\" in Xcode...\n", project)
@@ -193,6 +194,7 @@ open_project :: proc(query: string, projects: ^Projects) {
 		return
 	}
 
+	// Xcode project
 	xcodeproj_glob := filepath.join({path, "*.xcodeproj"})
 	if xcodeprojs, _ := filepath.glob(xcodeproj_glob); xcodeprojs != nil {
 		fmt.printf("Opening \"%v\" in Xcode...\n", project)
@@ -242,7 +244,7 @@ select_project :: proc(
 	// Request user query if none provided
 	if query == "" {
 		print_projects(projects, prompt)
-		input := read_user_input("\nEnter project query: ")
+		input := read_user_input("\nEnter project: ")
 		return select_project(input, projects)
 	}
 
@@ -268,7 +270,7 @@ select_project :: proc(
 
 	// Disambiguate if multiple matches
 	print_projects(&matches, prompt)
-	input := read_user_input("\nEnter project query: ")
+	input := read_user_input("\nEnter project: ")
 	return select_project(input, &matches)
 }
 
@@ -322,16 +324,15 @@ read_user_input :: proc(prompt: string) -> string {
 	fmt.print(prompt)
 
 	buffer: [256]byte
-
 	n, err := os.read(os.stdin, buffer[:])
 	if err != os.ERROR_NONE do error_exit("Failed to read user input")
 
-	return strings.clone(string(buffer[:n - 1]))
+	return strings.clone(string(buffer[:n - 1])) // Ignore last newline character
 }
 
 confirm :: proc(prompt: ..any) -> bool {
 	joined_prompt := fmt.tprint(..prompt, sep = "")
-	return "y" == read_user_input(fmt.tprintf("%v? (y/N) ", joined_prompt))
+	return "y" == read_user_input(fmt.tprintf("%v (y/N)? ", joined_prompt))
 }
 
 system :: proc(command: ..any) {
@@ -344,7 +345,6 @@ change_directory :: proc(path: string) {
 		error_exit("Failed to switch to project directory", code = int(error))
 	}
 }
-
 
 error_exit :: proc(args: ..any, code: int = 1) {
 	fmt.eprintln(..args)

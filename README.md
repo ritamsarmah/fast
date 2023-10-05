@@ -1,24 +1,34 @@
 # fast
 
-Quickly open and interact with project directories from the command-line. Supports easily opening a project in it's relevant system application (e.g., Xcode projects) or conveniently run start scripts.
+A minimal command-line tool for quickly opening and interacting with projects.
 
-## Getting Started
+## Installation
 
-Save the current directory as a project:
+_fast_ is written in [Odin](https://github.com/odin-lang/Odin) and requires the compiler in order to build. Run `./build.sh` to build the binary for *fast*, `f`.
 
-```shell
+```
+$ git clone https://github.com/ritamsarmah/fast
+$ cd fast
+$ ./build.sh
+```
+
+## Usage
+
+Save the current directory as a project (_fast_ data is stored at `~/.fstore`):
+
+```
 $ f -s project1
 ```
 
 Switch to a saved project directory from anywhere:
 
-```shell
+```
 $ f project1
 ```
 
-You can also enter a substring and `fast` will prompt to disambiguate as needed:
+Enter a substring and _fast_ will prompt to disambiguate as needed:
 
-```shell
+```
 $ f -s project2
 Saved project "project2"
 
@@ -28,14 +38,15 @@ Which project should be loaded?
 project1  /Users/me/Documents/MyApp
 project2  /Users/me/Developer/secret_project
 
-Enter project query: 2
+Enter project: 2
 Switching to "project2"
 ```
 
-If `fast` recognizes the project directory can be opened in a system application (e.g., Xcode projects), you can use the `-o` flag to open it directly from the command line.
+You can use the `-o` flag to open a project directory in a system application or IDE (e.g., Xcode) that *fast* recognizes. Otherwise, it defaults to opening in your configured `$EDITOR`.
 
-```shell
-$ f -o cool_ios_app
-Opening "cool_ios_app" in Xcode...
+```
+$ f -o my_ios_app
+Opening "my_ios_app" in Xcode...
 ```
 
+If the directory contains a `start` script, *fast* will automatically run that instead, allowing you to configure exactly how your project opens.
