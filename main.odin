@@ -27,8 +27,8 @@ NO_PROJECTS_ERROR :: "No saved projects found"
 /* Main */
 
 main :: proc() {
+	context.allocator = context.temp_allocator
 	projects := read_projects()
-	defer delete(projects)
 
 	switch command, query := parse_args(); command {
 	case .Help:
@@ -48,6 +48,8 @@ main :: proc() {
 	case .Reset:
 		reset_projects(&projects)
 	}
+
+	free_all(context.allocator)
 }
 
 parse_args :: proc() -> (command: Command, query: string) {
@@ -128,6 +130,9 @@ load_project :: proc(query: string, projects: ^Projects) {
 	} else {
 		fmt.printf("Switching to \"%v\"\n", project)
 		change_directory(path)
+
+		// Free memory before spawning shell to work in
+		free_all(context.allocator)
 
 		// Creates child shell process in project directory
 		system(os.get_env("SHELL"))
