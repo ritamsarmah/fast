@@ -21,9 +21,7 @@ Command :: enum {
 	Reset,
 }
 
-STORE_FILENAME :: ".fstore"
-STORE_PATH := filepath.join({os.get_env("HOME"), STORE_FILENAME})
-
+STORE_PATH := filepath.join({os.get_env("HOME"), ".fstore"})
 NO_PROJECTS_ERROR :: "No saved projects found"
 
 /* Main */
@@ -129,10 +127,7 @@ load_project :: proc(query: string, projects: ^Projects) {
 		fmt.println("Already in project directory")
 	} else {
 		fmt.printf("Switching to \"%v\"\n", project)
-		error := os.set_current_directory(path)
-		if error != os.ERROR_NONE {
-			error_exit("Failed to switch to project directory", code = int(error))
-		}
+		change_directory(path)
 
 		// Creates child shell process in new directory
 		system(os.get_env("SHELL"))
@@ -184,18 +179,28 @@ open_project :: proc(query: string, projects: ^Projects) {
 	project, path := select_project(query, projects)
 
 	if os.is_file(filepath.join({path, "start"})) {
-		fmt.printf("Starting \"%v\"", project)
-		os.set_current_directory(path)
+		fmt.printf("Starting \"%v\"...\n", project)
+		change_directory(path)
+
 		system("./start")
-	} else if xcworkspaces, _ := filepath.glob("*.xcworkspace"); xcworkspaces != nil {
-		fmt.printf("Opening \"%v\" in Xcode...", project)
-		system("open", xcworkspaces[0])
-	} else if xcodeprojs, _ := filepath.glob("*.xcodeproj"); xcodeprojs != nil {
-		fmt.printf("Opening \"%v\" in Xcode...", project)
-		system("open", xcodeprojs[0])
-	} else {
-		edit_project(project, projects)
+		return
 	}
+
+	xcworkspace_glob := filepath.join({path, "*.xcworkspace"})
+	if xcworkspaces, _ := filepath.glob(xcworkspace_glob); xcworkspaces != nil {
+		fmt.printf("Opening \"%v\" in Xcode...\n", project)
+		system("open", xcworkspaces[0])
+		return
+	}
+
+	xcodeproj_glob := filepath.join({path, "*.xcodeproj"})
+	if xcodeprojs, _ := filepath.glob(xcodeproj_glob); xcodeprojs != nil {
+		fmt.printf("Opening \"%v\" in Xcode...\n", project)
+		system("open", xcodeprojs[0])
+		return
+	}
+
+	edit_project(project, projects)
 }
 
 edit_project :: proc(query: string, projects: ^Projects) {
@@ -209,9 +214,8 @@ edit_project :: proc(query: string, projects: ^Projects) {
 		fmt.tprintf("Which project should be opened with %v?", editor),
 	)
 
-	os.set_current_directory(path)
+	change_directory(path)
 	system(editor, path)
-
 }
 
 reset_projects :: proc(projects: ^Projects) {
@@ -238,7 +242,7 @@ select_project :: proc(
 	// Request user query if none provided
 	if query == "" {
 		print_projects(projects, prompt)
-		input := read_user_input("\nEnter project name: ")
+		input := read_user_input("\nEnter project query: ")
 		return select_project(input, projects)
 	}
 
@@ -264,7 +268,7 @@ select_project :: proc(
 
 	// Disambiguate if multiple matches
 	print_projects(&matches, prompt)
-	input := read_user_input("\nEnter project name: ")
+	input := read_user_input("\nEnter project query: ")
 	return select_project(input, &matches)
 }
 
@@ -333,6 +337,14 @@ confirm :: proc(prompt: ..any) -> bool {
 system :: proc(command: ..any) {
 	libc.system(strings.clone_to_cstring(fmt.tprint(..command)))
 }
+
+change_directory :: proc(path: string) {
+	error := os.set_current_directory(path)
+	if error != os.ERROR_NONE {
+		error_exit("Failed to switch to project directory", code = int(error))
+	}
+}
+
 
 error_exit :: proc(args: ..any, code: int = 1) {
 	fmt.eprintln(..args)
