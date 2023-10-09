@@ -127,7 +127,7 @@ load_project :: proc(query: string, projects: ^Projects) {
 	project, path := select_project(query, projects, "Which project should be loaded?")
 
 	if path == os.get_current_directory() {
-		fmt.println("Already in project directory")
+		error_exit("Already in project directory")
 	} else {
 		fmt.printf("Switching to \"%v\"\n", project)
  		fmt.fprint(PATH_DESCRIPTOR, path)
