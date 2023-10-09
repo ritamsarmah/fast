@@ -23,6 +23,7 @@ Command :: enum {
 
 STORE_PATH := filepath.join({os.get_env("HOME"), ".fstore"})
 NO_PROJECTS_ERROR :: "No saved projects found"
+PATH_DESCRIPTOR :: 3 // Custom file descriptor used by shell wrapper
 
 /* Main */
 
@@ -129,9 +130,7 @@ load_project :: proc(query: string, projects: ^Projects) {
 		fmt.println("Already in project directory")
 	} else {
 		fmt.printf("Switching to \"%v\"\n", project)
- 
-		// Print to custom file descriptor used by shell wrapper
-		fmt.fprint(3, path)
+ 		fmt.fprint(PATH_DESCRIPTOR, path)
 	}
 }
 
@@ -182,7 +181,6 @@ open_project :: proc(query: string, projects: ^Projects) {
 	if os.is_file(filepath.join({path, "start"})) {
 		fmt.printf("Starting \"%v\"...\n", project)
 		change_directory(path)
-
 		system("./start")
 		return
 	}
@@ -217,8 +215,7 @@ edit_project :: proc(query: string, projects: ^Projects) {
 		fmt.tprintf("Which project should be opened with %v?", editor),
 	)
 
-	change_directory(path)
-	system(editor, path)
+	fmt.fprint(PATH_DESCRIPTOR, path)
 }
 
 reset_projects :: proc(projects: ^Projects) {
