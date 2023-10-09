@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-odin build . -out:f
+odin build . -o:speed

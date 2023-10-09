@@ -129,13 +129,9 @@ load_project :: proc(query: string, projects: ^Projects) {
 		fmt.println("Already in project directory")
 	} else {
 		fmt.printf("Switching to \"%v\"\n", project)
-		change_directory(path)
-
-		// Free memory before spawning shell to work in
-		free_all(context.allocator)
-
-		// Creates child shell process in project directory
-		system(os.get_env("SHELL"))
+ 
+		// Print to custom file descriptor used by shell wrapper
+		fmt.fprint(3, path)
 	}
 }
 
