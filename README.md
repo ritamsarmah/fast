@@ -4,13 +4,12 @@ A minimal command-line tool for quickly opening and interacting with projects.
 
 ## Installation
 
-**fast** is written in [Odin](https://github.com/odin-lang/Odin) and requires the compiler in order to build.
+**fast** requires a [Rust](https://www.rust-lang.org/) installation in order to build.
 
-1. Run `./build.sh` to build the binary, `fast`.
+1. Run `cargo build --release` in the project directory.
 2. Move or link the binary to make it available from your `$PATH` (e.g., `/usr/local/bin`).
 3. Configure the wrapper shell script:
-  - `fish`: Move or link `f.fish` to `~/.config/fish/functions`
-4. For editing projects from the command line, make sure your preferred `$EDITOR` environment variable is set (e.g., `vim`)
+      - `fish`: Move or link `f.fish` to `~/.config/fish/functions`
 
 ## Usage
 
