@@ -8,9 +8,9 @@ use std::io::Write;
 use std::io::{stdin, stdout};
 use std::os::fd::FromRawFd;
 use std::path::PathBuf;
-use std::process::{exit, Command};
+use std::process::exit;
 
-enum Flag {
+enum Command {
     Help,
     Load,
     Save,
@@ -32,18 +32,18 @@ fn main() {
     let mut projects = read_projects();
 
     match command {
-        Flag::Help => print_help(),
-        Flag::Load => load_project(&query, &projects),
-        Flag::Save => save_project(&query, &mut projects),
-        Flag::Delete => delete_project(&query, &mut projects),
-        Flag::View => view_project(&query, &projects),
-        Flag::Open => open_project(&query, &projects),
-        Flag::Edit => edit_project(&query, &projects),
-        Flag::Reset => reset_projects(&projects),
+        Command::Help => print_help(),
+        Command::Load => load_project(&query, &projects),
+        Command::Save => save_project(&query, &mut projects),
+        Command::Delete => delete_project(&query, &mut projects),
+        Command::View => view_project(&query, &projects),
+        Command::Open => open_project(&query, &projects),
+        Command::Edit => edit_project(&query, &projects),
+        Command::Reset => reset_projects(&projects),
     }
 }
 
-fn parse_args() -> (Flag, String) {
+fn parse_args() -> (Command, String) {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 3 {
@@ -54,13 +54,13 @@ fn parse_args() -> (Flag, String) {
     if args.len() > 1 && args[1].starts_with("-") {
         // Parse first argument as a flag
         let command = match args[1].as_str() {
-            "-h" | "--help" => Flag::Help,
-            "-s" | "--save" => Flag::Save,
-            "-d" | "--delete" => Flag::Delete,
-            "-v" | "--view" => Flag::View,
-            "-o" | "--open" => Flag::Open,
-            "-e" | "--edit" => Flag::Edit,
-            "--reset" => Flag::Reset,
+            "-h" | "--help" => Command::Help,
+            "-s" | "--save" => Command::Save,
+            "-d" | "--delete" => Command::Delete,
+            "-v" | "--view" => Command::View,
+            "-o" | "--open" => Command::Open,
+            "-e" | "--edit" => Command::Edit,
+            "--reset" => Command::Reset,
             _ => {
                 eprintln!("Error: Unrecognized argument provided: {}", args[1]);
                 exit(1)
@@ -74,7 +74,7 @@ fn parse_args() -> (Flag, String) {
         // Parse first argument as query
         // Query may or may not be provided
         let query = args.get(1).cloned();
-        (Flag::Load, query.unwrap_or_default())
+        (Command::Load, query.unwrap_or_default())
     }
 }
 
@@ -163,7 +163,7 @@ fn open_project(query: &str, projects: &Projects) {
     if path.join("start").is_file() {
         println!("Starting \"{}\"...", project);
         env::set_current_dir(&path).expect("Change to project directory");
-        let _ = Command::new("./start").spawn();
+        let _ = std::process::Command::new("./start").spawn();
         return;
     }
 
@@ -340,10 +340,10 @@ fn user_confirms(prompt: String) -> bool {
 /// Open path using operating system
 fn open_native(arg: &str) {
     #[cfg(target_os = "macos")]
-    let _ = Command::new("open").arg(arg).spawn();
+    let _ = std::process::Command::new("open").arg(arg).spawn();
 
     #[cfg(target_os = "linux")]
-    let _ = Command::new("xdg-open").arg(arg).spawn();
+    let _ = std::process::Command::new("xdg-open").arg(arg).spawn();
 }
 
 /// Get path to data store in user's home directory
