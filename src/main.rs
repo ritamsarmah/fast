@@ -102,7 +102,7 @@ fn write_projects(projects: &Projects) {
 fn load_project(query: &str, projects: &Projects) {
     let (project, path) = select_project(query, projects, "Which project should be loaded?");
 
-    if PathBuf::from(path) == current_dir() {
+    if *path == current_dir() {
         eprintln!("Already in project directory");
         exit(1)
     } else {
@@ -129,7 +129,7 @@ fn save_project(query: &str, projects: &mut Projects) {
 
     println!("Saved project \"{}\"", &project);
 
-    projects.insert(project, current_dir().to_string_lossy().into());
+    projects.insert(project, current_dir());
     write_projects(projects);
 }
 
@@ -352,8 +352,11 @@ fn get_store_path() -> PathBuf {
 }
 
 /// Return current directory
-fn current_dir() -> PathBuf {
-    env::current_dir().expect("Get current directory")
+fn current_dir() -> String {
+    env::current_dir()
+        .expect("Get current directory")
+        .to_string_lossy()
+        .into()
 }
 
 /// Get first file matching extension in directory
@@ -370,7 +373,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
     return None;
 }
 
-/// Writes a path to file descriptor 3 to communicate with shell wrapper
+/// Writes a path to custom file descriptor to communicate with shell wrapper
 fn send_to_shell(path: &str) {
     let mut file = unsafe { File::from_raw_fd(3) };
     write!(&mut file, "{}", path).expect("Write to file descriptor");
