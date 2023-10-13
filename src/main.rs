@@ -1,5 +1,7 @@
 use home::home_dir;
 
+use itertools::Itertools;
+
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
@@ -224,6 +226,8 @@ fn reset_projects(projects: &HashMap<String, String>) {
 
 /* Utilities */
 
+/// Selects a project from projects based on query, requesting user for additional input if ambiguous
+/// The lifetime of the returned (project, path) key-value pair is tied to the `projects` map it is retrieved from
 fn select_project<'a>(
     query: &str,
     projects: &'a Projects,
@@ -258,6 +262,7 @@ fn select_project<'a>(
             exit(1)
         }
         1 => {
+            // Retrieve first (and only) project in matches and corresponding path
             let project = *matches.iter().next().unwrap();
             let path = projects.get(project).unwrap();
 
@@ -270,10 +275,9 @@ fn select_project<'a>(
 
             print_projects(&subset, prompt);
             let input = user_input("\nEnter project: ");
-
-            // Return original key-value pair
             let (key, _) = select_project(&input, &subset, "");
 
+            // Return original key-value pair
             projects.get_key_value(key).unwrap()
         }
     }
@@ -312,18 +316,16 @@ fn print_projects(projects: &Projects, prompt: &str) {
         println!("{}\n", prompt);
     }
 
-    let mut keys: Vec<_> = projects.keys().into_iter().collect();
-    keys.sort_by(|a, b| a.cmp(b));
-
     // Print two columns with project name on left in bold and path on right
     // Determine whitespace between columns using the maximum project length
-    let max_len = keys.iter().map(|k| k.len()).max().unwrap();
-    for key in keys {
+    let padding = projects.keys().map(String::len).max().unwrap() + 2;
+    let pairs = projects.iter().sorted();
+    for (project, path) in pairs {
         println!(
             "\x1b[1m{: <width$}\x1b[0m{}",
-            key,
-            projects[key],
-            width = max_len + 2
+            project,
+            path,
+            width = padding
         );
     }
 }
