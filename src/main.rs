@@ -119,7 +119,7 @@ fn save_project(query: &str, projects: &mut Projects) {
     };
 
     if projects.contains_key(&project)
-        && user_confirms(format!(
+        && !user_confirms(format!(
             "Project named \"{}\" already exists. Overwrite",
             project
         ))
