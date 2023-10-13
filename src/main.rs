@@ -163,7 +163,13 @@ fn open_project(query: &str, projects: &Projects) {
     if path.join("start").is_file() {
         println!("Starting \"{}\"...", project);
         env::set_current_dir(&path).expect("Change to project directory");
-        let _ = std::process::Command::new("./start").spawn();
+
+        let mut child = std::process::Command::new("./start")
+            .spawn()
+            .expect("Run start script");
+
+        child.wait().expect("Wait for start script to finish");
+
         return;
     }
 
@@ -181,7 +187,11 @@ fn open_project(query: &str, projects: &Projects) {
         return;
     }
 
-    edit_project(project, projects);
+    eprintln!(
+        "No environment or system app to open for project: {}",
+        project
+    );
+    exit(1)
 }
 
 fn edit_project(query: &str, projects: &Projects) {
@@ -376,5 +386,5 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
 /// Writes a path to custom file descriptor to communicate with shell wrapper
 fn send_to_shell(path: &str) {
     let mut file = unsafe { File::from_raw_fd(3) };
-    write!(&mut file, "{}", path).expect("Write to file descriptor");
+    write!(&mut file, "{}", path).expect("Communicate with shell wrapper");
 }
