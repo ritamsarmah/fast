@@ -50,7 +50,7 @@ fn parse_args() -> (Command, String) {
 
     if args.len() > 3 {
         eprintln!("Error: Too many arguments provided");
-        exit(1)
+        exit(1);
     }
 
     if args.len() > 1 && args[1].starts_with("-") {
@@ -65,7 +65,7 @@ fn parse_args() -> (Command, String) {
             "--reset" => Command::Reset,
             _ => {
                 eprintln!("Error: Unrecognized argument provided: {}", args[1]);
-                exit(1)
+                exit(1);
             }
         };
 
@@ -106,7 +106,7 @@ fn load_project(query: &str, projects: &Projects) {
 
     if *path == current_dir() {
         eprintln!("Already in project directory");
-        exit(1)
+        exit(1);
     } else {
         println!("Switching to \"{}\"", project);
         send_to_shell(&path);
@@ -193,7 +193,8 @@ fn open_project(query: &str, projects: &Projects) {
         "No environment or system app to open for project: {}",
         project
     );
-    exit(1)
+
+    exit(1);
 }
 
 fn edit_project(query: &str, projects: &Projects) {
@@ -206,7 +207,7 @@ fn edit_project(query: &str, projects: &Projects) {
         }
         Err(_) => {
             eprintln!("No editor configured. Please set the $EDITOR environment variable");
-            exit(1)
+            exit(1);
         }
     }
 }
@@ -214,7 +215,7 @@ fn edit_project(query: &str, projects: &Projects) {
 fn reset_projects(projects: &HashMap<String, String>) {
     if projects.is_empty() {
         eprintln!("{}", NO_PROJECTS_ERROR);
-        exit(1)
+        exit(1);
     }
 
     if user_confirms(format!("Remove {} saved projects", projects.len())) {
@@ -235,7 +236,7 @@ fn select_project<'a>(
 ) -> (&'a String, &'a String) {
     if projects.is_empty() {
         eprintln!("{}", NO_PROJECTS_ERROR);
-        exit(1)
+        exit(1);
     }
 
     // Request user query if none provided
@@ -259,7 +260,7 @@ fn select_project<'a>(
     match matches.len() {
         0 => {
             eprintln!("Error: No matching project found");
-            exit(1)
+            exit(1);
         }
         1 => {
             // Retrieve first (and only) project in matches and corresponding path
