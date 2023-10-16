@@ -5,10 +5,8 @@ use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
-use std::fs::File;
 use std::io::Write;
 use std::io::{stdin, stdout};
-use std::os::fd::FromRawFd;
 use std::path::PathBuf;
 use std::process::exit;
 
@@ -358,11 +356,16 @@ fn user_confirms(prompt: String) -> bool {
 
 /// Open path using operating system
 fn open_native(arg: &str) {
-    #[cfg(target_os = "macos")]
-    let _ = std::process::Command::new("open").arg(arg).spawn();
+    let command = if cfg!(target_os = "macos") {
+        "open"
+    } else if cfg!(target_os = "linux") {
+        "xdg-open"
+    } else {
+        eprintln!("Unsupported OS");
+        exit(1);
+    };
 
-    #[cfg(target_os = "linux")]
-    let _ = std::process::Command::new("xdg-open").arg(arg).spawn();
+    let _ = std::process::Command::new(command).arg(arg).spawn();
 }
 
 /// Get path to data store in user's home directory
@@ -394,6 +397,6 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
 
 /// Writes a path to custom file descriptor to communicate with shell wrapper
 fn send_to_shell(path: &str) {
-    let mut file = unsafe { File::from_raw_fd(3) };
-    write!(&mut file, "{}", path).expect("Communicate with shell wrapper");
+    let tmp_file_path = PathBuf::from("/tmp/fast_project");
+    fs::write(tmp_file_path, path).expect("Write to temporary file for shell")
 }

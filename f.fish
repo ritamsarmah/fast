@@ -11,10 +11,8 @@ function f
 
     set -l query $argv
 
-    # fast will write project path to file descriptor 3
-    # fish doesn't support reading to file descriptor so use bash
+    # fast will write project path to a tmp file
     set -l tmp_file /tmp/fast_project
-    rm -f $tmp_file
 
     if test $_flag_help
         fast --help
@@ -27,7 +25,7 @@ function f
     else if test $_flag_open
         fast --open $query
     else if test $_flag_edit
-        bash -c "exec 3<> $tmp_file && fast --edit $query"
+        fast --edit $query
         if test $status -eq 0
             set -l dir (cat $tmp_file)
             cd $dir
@@ -36,12 +34,10 @@ function f
     else if test $_flag_reset
         fast --reset
     else
-        bash -c "exec 3<> $tmp_file && fast $query"
+        fast $query
         if test $status -eq 0
             set -l dir (cat $tmp_file)
             cd $dir
         end
     end
-
-    bash -c "exec 3>&-"
 end
