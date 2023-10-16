@@ -53,9 +53,9 @@ fn parse_args() -> (Command, String) {
         exit(1);
     }
 
-    if args.len() > 1 && args[1].starts_with("-") {
-        // Parse first argument as a flag
-        let command = match args[1].as_str() {
+    let (command, query_index) = if args.len() > 1 && args[1].starts_with("-") {
+        // Parse first argument as a flag, second argument as query
+        let command = match args[1].as_ref() {
             "-h" | "--help" => Command::Help,
             "-s" | "--save" => Command::Save,
             "-d" | "--delete" => Command::Delete,
@@ -69,15 +69,18 @@ fn parse_args() -> (Command, String) {
             }
         };
 
-        // Query may or may not be provided
-        let query = args.get(2).map_or_else(String::new, String::to_owned);
-        (command, query)
+        (command, 2)
     } else {
         // Parse first argument as query
-        // Query may or may not be provided
-        let query = args.get(1).map_or_else(String::new, String::to_owned);
-        (Command::Load, query)
-    }
+        (Command::Load, 1)
+    };
+
+    // Query may or may not be provided
+    let query = args
+        .get(query_index)
+        .map_or_else(String::new, String::to_owned);
+
+    (command, query)
 }
 
 /* Store */
