@@ -53,6 +53,8 @@ fn parse_args() -> (Command, String) {
         exit(1);
     }
 
+    // NOTE: The shell wrapper parses flags in any order, and calls with flag as first argument
+
     let has_flag = args.len() > 1 && args[1].starts_with("-");
     let (command, query_index) = if has_flag {
         // Parse first argument as a flag, second argument as query
