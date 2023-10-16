@@ -53,7 +53,8 @@ fn parse_args() -> (Command, String) {
         exit(1);
     }
 
-    let (command, query_index) = if args.len() > 1 && args[1].starts_with("-") {
+    let has_flag = args.len() > 1 && args[1].starts_with("-");
+    let (command, query_index) = if has_flag {
         // Parse first argument as a flag, second argument as query
         let command = match args[1].as_ref() {
             "-h" | "--help" => Command::Help,
