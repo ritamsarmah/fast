@@ -70,13 +70,13 @@ fn parse_args() -> (Command, String) {
         };
 
         // Query may or may not be provided
-        let query = args.get(2).cloned();
-        (command, query.unwrap_or_default())
+        let query = args.get(2).map_or_else(String::new, String::to_owned);
+        (command, query)
     } else {
         // Parse first argument as query
         // Query may or may not be provided
-        let query = args.get(1).cloned();
-        (Command::Load, query.unwrap_or_default())
+        let query = args.get(1).map_or_else(String::new, String::to_owned);
+        (Command::Load, query)
     }
 }
 
