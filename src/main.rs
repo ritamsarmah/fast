@@ -395,7 +395,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
     return None;
 }
 
-/// Writes a path to custom file descriptor to communicate with shell wrapper
+/// Writes a path to temporary file to communicate with shell wrapper
 fn send_to_shell(path: &str) {
     let tmp_file_path = PathBuf::from("/tmp/fast_project");
     fs::write(tmp_file_path, path).expect("Write to temporary file for shell")
