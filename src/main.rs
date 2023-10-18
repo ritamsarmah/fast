@@ -396,7 +396,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
     return None;
 }
 
-/// Writes a path to temporary file to communicate with shell wrapper
+/// Writes a shell command to temporary file to communicate with shell wrapper
 fn send_to_shell(command: &str, path: &PathBuf) {
     let contents = format!("{} '{}'", command, path.display());
     fs::write("/tmp/fast_cmd", contents).expect("Write to temporary file for shell");
