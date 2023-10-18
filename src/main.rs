@@ -327,7 +327,7 @@ fn print_projects(projects: &Projects, prompt: &str) {
         println!(
             "\x1b[1m{: <width$}\x1b[0m{}",
             project,
-            path.display(),
+            tilde_path(path),
             width = padding
         );
     }
@@ -374,6 +374,12 @@ fn get_store_path() -> PathBuf {
 /// Return current directory
 fn current_dir() -> PathBuf {
     env::current_dir().expect("Get current directory")
+}
+
+// Returns a path string replacing user's home directory with ~
+fn tilde_path(path: &PathBuf) -> String {
+    let home = home_dir().unwrap_or_default().to_string_lossy().to_string();
+    path.display().to_string().replacen(&home, "~", 1)
 }
 
 /// Get first file matching extension in directory
