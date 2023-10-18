@@ -1,43 +1,15 @@
 function f
-    argparse --max-args 1 \
-    --exclusive 'h,s,d,v,o,e,reset' \
-        'h/help' \
-        's/save' \
-        'd/delete' \
-        'v/view' \
-        'o/open' \
-        'e/edit' \
-        'reset' -- $argv
+    # Binary writes command for shell to tmp file
+    # This primarily avoids spawning a child process to change directory for example
+    set -l tmp_file /tmp/fast_cmd
+    rm -f "$tmp_file"
 
-    set -l query $argv
+    # Forward arguments
+    fast $argv
 
-    # fast will write project path to a tmp file
-    set -l tmp_file /tmp/fast_project
-
-    if test $_flag_help
-        fast --help
-    else if test $_flag_save
-        fast --save $query
-    else if test $_flag_delete
-        fast --delete $query
-    else if test $_flag_view
-        fast --view $query
-    else if test $_flag_open
-        fast --open $query
-    else if test $_flag_edit
-        fast --edit $query
-        if test $status -eq 0
-            set -l dir (cat $tmp_file)
-            cd $dir
-            $EDITOR $dir
-        end
-    else if test $_flag_reset
-        fast --reset
-    else
-        fast $query
-        if test $status -eq 0
-            set -l dir (cat $tmp_file)
-            cd $dir
-        end
+    # Check if fast exited successfully and wrote command to tmp file
+    if test $status -eq 0 && test -e "$tmp_file"
+        set -l cmd (cat $tmp_file)
+        eval "$cmd"
     end
 end

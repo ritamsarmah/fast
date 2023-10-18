@@ -51,8 +51,6 @@ fn parse_args() -> (Command, String) {
         exit(1);
     }
 
-    // NOTE: The shell wrapper parses flags in any order, and calls with flag as first argument
-
     let has_flag = args.len() > 1 && args[1].starts_with("-");
     let (command, query_index) = if has_flag {
         // Parse first argument as a flag, second argument as query
@@ -113,7 +111,7 @@ fn load_project(query: &str, projects: &Projects) {
         exit(1);
     } else {
         println!("Switching to \"{}\"", project);
-        send_to_shell(path);
+        send_to_shell("cd", path);
     }
 }
 
@@ -207,7 +205,7 @@ fn edit_project(query: &str, projects: &Projects) {
             let message = format!("Which project should be opened with {}?", editor);
             let (_, path) = select_project(query, projects, &message);
 
-            send_to_shell(&path);
+            send_to_shell(&editor, path);
         }
         Err(_) => {
             eprintln!("No editor configured. Please set the $EDITOR environment variable");
@@ -329,7 +327,7 @@ fn print_projects(projects: &Projects, prompt: &str) {
         println!(
             "\x1b[1m{: <width$}\x1b[0m{}",
             project,
-            path.to_string_lossy(),
+            path.display(),
             width = padding
         );
     }
@@ -393,7 +391,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
 }
 
 /// Writes a path to temporary file to communicate with shell wrapper
-fn send_to_shell(path: &PathBuf) {
-    fs::write("/tmp/fast_project", path.to_string_lossy().as_ref())
-        .expect("Write to temporary file for shell")
+fn send_to_shell(command: &str, path: &PathBuf) {
+    let contents = format!("{} {}", command, path.display());
+    fs::write("/tmp/fast_cmd", contents).expect("Write to temporary file for shell");
 }
