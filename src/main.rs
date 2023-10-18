@@ -21,7 +21,7 @@ enum Command {
     Reset,
 }
 
-type Projects = HashMap<String, String>;
+type Projects = HashMap<String, PathBuf>;
 
 const NO_PROJECTS_ERROR: &str = "No saved projects found";
 
@@ -113,7 +113,7 @@ fn load_project(query: &str, projects: &Projects) {
         exit(1);
     } else {
         println!("Switching to \"{}\"", project);
-        send_to_shell(&path);
+        send_to_shell(path);
     }
 }
 
@@ -182,14 +182,14 @@ fn open_project(query: &str, projects: &Projects) {
     // Xcode workspace
     if let Some(xcworkspace) = get_file_with_extension("xcworkspace", &path) {
         println!("Opening \"{}\" in Xcode...", project);
-        open_native(&xcworkspace.to_string_lossy());
+        open_native(&xcworkspace);
         return;
     }
 
     // Xcode project
     if let Some(xcodeproj) = get_file_with_extension("xcodeproj", &path) {
         println!("Opening \"{}\" in Xcode...", project);
-        open_native(&xcodeproj.to_string_lossy());
+        open_native(&xcodeproj);
         return;
     }
 
@@ -216,7 +216,7 @@ fn edit_project(query: &str, projects: &Projects) {
     }
 }
 
-fn reset_projects(projects: &HashMap<String, String>) {
+fn reset_projects(projects: &Projects) {
     if projects.is_empty() {
         eprintln!("{}", NO_PROJECTS_ERROR);
         exit(1);
@@ -237,7 +237,7 @@ fn select_project<'a>(
     query: &str,
     projects: &'a Projects,
     prompt: &str,
-) -> (&'a String, &'a String) {
+) -> (&'a String, &'a PathBuf) {
     if projects.is_empty() {
         eprintln!("{}", NO_PROJECTS_ERROR);
         exit(1);
@@ -329,7 +329,7 @@ fn print_projects(projects: &Projects, prompt: &str) {
         println!(
             "\x1b[1m{: <width$}\x1b[0m{}",
             project,
-            path,
+            path.to_string_lossy(),
             width = padding
         );
     }
@@ -355,7 +355,7 @@ fn user_confirms(prompt: String) -> bool {
 /* Files & Directories */
 
 /// Open path using operating system
-fn open_native(arg: &str) {
+fn open_native(arg: &PathBuf) {
     let command = if cfg!(target_os = "macos") {
         "open"
     } else if cfg!(target_os = "linux") {
@@ -374,11 +374,8 @@ fn get_store_path() -> PathBuf {
 }
 
 /// Return current directory
-fn current_dir() -> String {
-    env::current_dir()
-        .expect("Get current directory")
-        .to_string_lossy()
-        .into()
+fn current_dir() -> PathBuf {
+    env::current_dir().expect("Get current directory")
 }
 
 /// Get first file matching extension in directory
@@ -396,6 +393,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
 }
 
 /// Writes a path to temporary file to communicate with shell wrapper
-fn send_to_shell(path: &str) {
-    fs::write("/tmp/fast_project", path).expect("Write to temporary file for shell")
+fn send_to_shell(path: &PathBuf) {
+    fs::write("/tmp/fast_project", path.to_string_lossy().as_ref())
+        .expect("Write to temporary file for shell")
 }
