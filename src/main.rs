@@ -4,7 +4,7 @@ use home::home_dir;
 use itertools::Itertools;
 
 use std::collections::{HashMap, HashSet};
-use std::env;
+use std::env::{self, current_dir, set_current_dir};
 use std::fs;
 use std::io::Write;
 use std::io::{stdin, stdout};
@@ -119,30 +119,27 @@ fn load_project(query: &str, projects: &Projects) -> Result<()> {
 
 fn save_project(query: &str, projects: &mut Projects) -> Result<()> {
     let project = if query.is_empty() {
-        user_input("Enter new project name: ")
+        user_input("Enter new project name: ")?
     } else {
         query.to_string()
     };
 
-    if projects.contains_key(&project)
-        && !user_confirms(format!(
-            "Project named \"{}\" already exists. Overwrite",
-            project
-        ))
-    {
-        Ok(())
-    } else {
+    let message = format!("Project named \"{}\" already exists. Overwrite", project);
+    if !projects.contains_key(&project) || user_confirms(message)? {
         println!("Saved project \"{}\"", &project);
 
         projects.insert(project, current_dir()?);
         write_projects(projects)
+    } else {
+        Ok(())
     }
 }
 
 fn delete_project(query: &str, projects: &mut Projects) -> Result<()> {
     let (project, _) = select_project(query, projects, "Which project should be deleted?")?;
 
-    if user_confirms(format!("Delete \"{}\"", project)) {
+    let message = format!("Delete \"{}\"", project);
+    if user_confirms(message)? {
         println!("Deleted project \"{}\"", project);
 
         projects.remove(&project.clone());
@@ -170,7 +167,7 @@ fn open_project(query: &str, projects: &Projects) -> Result<()> {
     if path.join("start").is_file() {
         // Start script
         println!("Starting \"{}\"...", project);
-        env::set_current_dir(&path).expect("Change to project directory");
+        set_current_dir(&path)?;
 
         let mut child = std::process::Command::new("./start").spawn()?;
 
@@ -213,7 +210,8 @@ fn reset_projects(projects: &Projects) -> Result<()> {
         bail!("{}", NO_PROJECTS_ERROR);
     }
 
-    if user_confirms(format!("Remove {} saved projects", projects.len())) {
+    let message = format!("Remove {} saved projects", projects.len());
+    if user_confirms(message)? {
         let store = get_store_path()?;
         fs::remove_file(store)?;
         println!("Remove all saved projects");
@@ -237,8 +235,8 @@ fn select_project<'a>(
 
     // Request user query if none provided
     if query.is_empty() {
-        print_projects(projects, prompt);
-        let input = user_input("\nEnter project: ");
+        print_projects(projects, prompt)?;
+        let input = user_input("\nEnter project: ")?;
         return select_project(&input, projects, "");
     }
 
@@ -269,8 +267,8 @@ fn select_project<'a>(
             let mut subset = projects.clone();
             subset.retain(|key, _| matches.contains(key));
 
-            print_projects(&subset, prompt);
-            let input = user_input("\nEnter project: ");
+            print_projects(&subset, prompt)?;
+            let input = user_input("\nEnter project: ")?;
             let (key, _) = select_project(&input, &subset, "")?;
 
             // Return original key-value pair
@@ -303,7 +301,7 @@ Flags:
     );
 }
 
-fn print_projects(projects: &Projects, prompt: &str) {
+fn print_projects(projects: &Projects, prompt: &str) -> Result<()> {
     if prompt.is_empty() {
         let count = projects.len();
         let suffix = if count != 1 { "s" } else { "" };
@@ -320,27 +318,29 @@ fn print_projects(projects: &Projects, prompt: &str) {
         println!(
             "\x1b[1m{: <width$}\x1b[0m{}",
             project,
-            tilde_path(path),
+            tilde_path(path)?,
             width = padding
         );
     }
+
+    Ok(())
 }
 
 /* User Input */
 
-fn user_input(prompt: &str) -> String {
+fn user_input(prompt: &str) -> Result<String> {
     print!("{}", prompt);
-    let _ = stdout().flush(); // Explicit flush for line-buffered stdout
+    stdout().flush()?; // Explicit flush for line-buffered stdout
 
     let mut buffer = String::new();
-    let _ = stdin().read_line(&mut buffer).expect("Read user input");
+    stdin().read_line(&mut buffer)?;
 
-    buffer.trim_end().into()
+    Ok(buffer.trim_end().into())
 }
 
-fn user_confirms(prompt: String) -> bool {
+fn user_confirms(prompt: String) -> Result<bool> {
     let prompt = format!("{} (y/N)? ", prompt);
-    user_input(&prompt) == "y"
+    Ok(user_input(&prompt)? == "y")
 }
 
 /* Files & Directories */
@@ -365,23 +365,19 @@ fn get_store_path() -> Result<PathBuf> {
     Ok(home.join(".fstore"))
 }
 
-/// Return current directory
-fn current_dir() -> Result<PathBuf> {
-    env::current_dir().context("Get current directory")
-}
-
 // Returns a path string replacing user's home directory with ~
 fn tilde_path(path: &Path) -> Result<String> {
     let home = home_dir()
-        .context("Failed to retrieve user home directory")?
+        .context("Failed to retrieve home directory")?
         .to_string_lossy()
         .to_string();
+
     Ok(path.display().to_string().replacen(&home, "~", 1))
 }
 
 /// Get first file matching extension in directory
 fn get_file_with_extension(ext: &str, dir: &Path) -> Option<PathBuf> {
-    let entries = fs::read_dir(dir).expect("Read directory");
+    let entries = fs::read_dir(dir).ok()?;
     for entry in entries {
         let path = entry.ok()?.path();
         let extension = path.extension()?;
