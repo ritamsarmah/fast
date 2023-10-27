@@ -266,9 +266,9 @@ fn select_project<'a>(query: &str, projects: &'a Projects, prompt: &str) -> Sele
             // Clone projects and disambiguate from matches
             let mut subset = projects.clone();
             subset.retain(|key, _| matches.contains(key));
+            let (key, _) = query_user(&subset, "")?;
 
             // Return original key-value pair
-            let (key, _) = query_user(&subset, "")?;
             Ok(projects.get_key_value(key).unwrap())
         }
     }
