@@ -1,3 +1,4 @@
+use anyhow::{anyhow, bail, Context, Result};
 use home::home_dir;
 
 use itertools::Itertools;
@@ -8,10 +9,8 @@ use std::fs;
 use std::io::Write;
 use std::io::{stdin, stdout};
 use std::path::{Path, PathBuf};
-use std::process::exit;
 
 enum Command {
-    Help,
     Load,
     Save,
     Delete,
@@ -19,6 +18,7 @@ enum Command {
     Open,
     Edit,
     Reset,
+    Help,
 }
 
 type Projects = HashMap<String, PathBuf>;
@@ -27,12 +27,11 @@ const NO_PROJECTS_ERROR: &str = "No saved projects found";
 
 /* Main */
 
-fn main() {
-    let (command, query) = parse_args();
-    let mut projects = read_projects();
+fn main() -> Result<()> {
+    let (command, query) = parse_args()?;
+    let mut projects = read_projects()?;
 
     match command {
-        Command::Help => print_help(),
         Command::Load => load_project(&query, &projects),
         Command::Save => save_project(&query, &mut projects),
         Command::Delete => delete_project(&query, &mut projects),
@@ -40,15 +39,18 @@ fn main() {
         Command::Open => open_project(&query, &projects),
         Command::Edit => edit_project(&query, &projects),
         Command::Reset => reset_projects(&projects),
+        Command::Help => {
+            print_help();
+            Ok(())
+        }
     }
 }
 
-fn parse_args() -> (Command, String) {
+fn parse_args() -> Result<(Command, String)> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 3 {
-        eprintln!("Error: Too many arguments provided");
-        exit(1);
+        bail!("Too many arguments provided");
     }
 
     let has_flag = args.len() > 1 && args[1].starts_with('-');
@@ -63,8 +65,7 @@ fn parse_args() -> (Command, String) {
             "-e" | "--edit" => Command::Edit,
             "--reset" => Command::Reset,
             _ => {
-                eprintln!("Error: Unrecognized argument provided: {}", args[1]);
-                exit(1);
+                bail!("Unrecognized argument provided: {}", args[1]);
             }
         };
 
@@ -79,43 +80,44 @@ fn parse_args() -> (Command, String) {
         .get(query_index)
         .map_or_else(String::new, String::to_owned);
 
-    (command, query)
+    Ok((command, query))
 }
 
 /* Store */
 
-fn read_projects() -> Projects {
+fn read_projects() -> Result<Projects> {
     // Return empty map if file does not exist
-    let store = get_store_path();
+    let store = get_store_path()?;
     if !store.exists() {
-        return Projects::new();
+        Ok(Projects::new())
+    } else {
+        let serialized = fs::read_to_string(store)?;
+        serde_json::from_str(&serialized).context("Failed to read projects from disk")
     }
-
-    let serialized = fs::read_to_string(store).expect("Read projects file");
-    serde_json::from_str(&serialized).expect("Deserialized projects")
 }
 
-fn write_projects(projects: &Projects) {
-    let store = get_store_path();
-    let serialized = serde_json::to_string(projects).expect("Serialized projects");
-    fs::write(store, serialized).expect("Write projects file");
+fn write_projects(projects: &Projects) -> Result<()> {
+    let store = get_store_path()?;
+    let serialized = serde_json::to_string(projects)?;
+    fs::write(store, serialized)?;
+    Ok(())
 }
 
 /* Commands */
 
-fn load_project(query: &str, projects: &Projects) {
-    let (project, path) = select_project(query, projects, "Which project should be loaded?");
+fn load_project(query: &str, projects: &Projects) -> Result<()> {
+    let (project, path) = select_project(query, projects, "Which project should be loaded?")?;
 
-    if *path == current_dir() {
-        eprintln!("Already in project directory");
-        exit(1);
-    } else {
-        println!("Switching to \"{}\"", project);
-        send_to_shell("cd", path);
+    if *path == current_dir()? {
+        bail!("Already in project directory");
     }
+
+    println!("Switching to \"{}\"", project);
+    send_to_shell("cd", path)?;
+    Ok(())
 }
 
-fn save_project(query: &str, projects: &mut Projects) {
+fn save_project(query: &str, projects: &mut Projects) -> Result<()> {
     let project = if query.is_empty() {
         user_input("Enter new project name: ")
     } else {
@@ -128,103 +130,96 @@ fn save_project(query: &str, projects: &mut Projects) {
             project
         ))
     {
-        return;
+        Ok(())
+    } else {
+        println!("Saved project \"{}\"", &project);
+
+        projects.insert(project, current_dir()?);
+        write_projects(projects)
     }
-
-    println!("Saved project \"{}\"", &project);
-
-    projects.insert(project, current_dir());
-    write_projects(projects);
 }
 
-fn delete_project(query: &str, projects: &mut Projects) {
-    let (project, _) = select_project(query, projects, "Which project should be deleted?");
+fn delete_project(query: &str, projects: &mut Projects) -> Result<()> {
+    let (project, _) = select_project(query, projects, "Which project should be deleted?")?;
 
     if user_confirms(format!("Delete \"{}\"", project)) {
         println!("Deleted project \"{}\"", project);
 
         projects.remove(&project.clone());
-        write_projects(projects);
+        write_projects(projects)?
     }
+
+    Ok(())
 }
 
-fn view_project(query: &str, projects: &Projects) {
+fn view_project(query: &str, projects: &Projects) -> Result<()> {
     let (project, path) = select_project(
         query,
         projects,
         "Which project should open in the file explorer?",
-    );
+    )?;
 
     println!("Opening \"{}\" in file explorer...", project);
-    open_native(path);
+    open_native(path)
 }
 
-fn open_project(query: &str, projects: &Projects) {
-    let (project, path) = select_project(query, projects, "Which project would you like to open?");
+fn open_project(query: &str, projects: &Projects) -> Result<()> {
+    let (project, path) = select_project(query, projects, "Which project would you like to open?")?;
     let path = PathBuf::from(path);
 
-    // Start script
     if path.join("start").is_file() {
+        // Start script
         println!("Starting \"{}\"...", project);
         env::set_current_dir(&path).expect("Change to project directory");
 
-        let mut child = std::process::Command::new("./start")
-            .spawn()
-            .expect("Run start script");
+        let mut child = std::process::Command::new("./start").spawn()?;
 
-        child.wait().expect("Wait for start script to finish");
-
-        return;
-    }
-
-    // Xcode workspace
-    if let Some(xcworkspace) = get_file_with_extension("xcworkspace", &path) {
+        child
+            .wait()
+            .map(|_| ())
+            .map_err(|e| anyhow!("Failed to wait for start script to complete: {}", e))
+    } else if let Some(xcworkspace) = get_file_with_extension("xcworkspace", &path) {
+        // Xcode workspace
         println!("Opening \"{}\" in Xcode...", project);
-        open_native(&xcworkspace);
-        return;
-    }
-
-    // Xcode project
-    if let Some(xcodeproj) = get_file_with_extension("xcodeproj", &path) {
+        open_native(&xcworkspace)
+    } else if let Some(xcodeproj) = get_file_with_extension("xcodeproj", &path) {
+        // Xcode project
         println!("Opening \"{}\" in Xcode...", project);
-        open_native(&xcodeproj);
-        return;
+        open_native(&xcodeproj)
+    } else {
+        bail!(
+            "No environment or system app to open for project: {}",
+            project
+        );
     }
-
-    eprintln!(
-        "No environment or system app to open for project: {}",
-        project
-    );
-
-    exit(1);
 }
 
-fn edit_project(query: &str, projects: &Projects) {
+fn edit_project(query: &str, projects: &Projects) -> Result<()> {
     match env::var("EDITOR") {
         Ok(editor) => {
             let message = format!("Which project should be opened with {}?", editor);
-            let (_, path) = select_project(query, projects, &message);
+            let (_, path) = select_project(query, projects, &message)?;
 
-            send_to_shell(&editor, path);
+            send_to_shell(&editor, path)
         }
         Err(_) => {
-            eprintln!("No editor configured. Please set the $EDITOR environment variable");
-            exit(1);
+            bail!("No editor configured. Please set the $EDITOR environment variable");
         }
     }
 }
 
-fn reset_projects(projects: &Projects) {
+fn reset_projects(projects: &Projects) -> Result<()> {
     if projects.is_empty() {
-        eprintln!("{}", NO_PROJECTS_ERROR);
-        exit(1);
+        bail!("{}", NO_PROJECTS_ERROR);
     }
 
     if user_confirms(format!("Remove {} saved projects", projects.len())) {
-        let store = get_store_path();
-        fs::remove_file(store).expect("Remove saved projects");
-        println!("Remove all saved projects")
+        let store = get_store_path()?;
+        fs::remove_file(store)?;
+        println!("Remove all saved projects");
     }
+
+    Ok(())
 }
 
 /* Utilities */
@@ -235,10 +230,9 @@ fn select_project<'a>(
     query: &str,
     projects: &'a Projects,
     prompt: &str,
-) -> (&'a String, &'a PathBuf) {
+) -> Result<(&'a String, &'a PathBuf)> {
     if projects.is_empty() {
-        eprintln!("{}", NO_PROJECTS_ERROR);
-        exit(1);
+        bail!("{}", NO_PROJECTS_ERROR);
     }
 
     // Request user query if none provided
@@ -250,7 +244,7 @@ fn select_project<'a>(
 
     // Return exact match if found
     if let Some((project, path)) = projects.get_key_value(query) {
-        return (project, path);
+        return Ok((project, path));
     }
 
     // Filter project keys containing substring
@@ -261,15 +255,14 @@ fn select_project<'a>(
 
     match matches.len() {
         0 => {
-            eprintln!("Error: No matching project found");
-            exit(1);
+            bail!("No matching project found");
         }
         1 => {
             // Retrieve first (and only) project in matches and corresponding path
             let project = *matches.iter().next().unwrap();
             let path = projects.get(project).unwrap();
 
-            (project, path)
+            Ok((project, path))
         }
         _ => {
             // Clone projects and disambiguate from matches
@@ -278,10 +271,10 @@ fn select_project<'a>(
 
             print_projects(&subset, prompt);
             let input = user_input("\nEnter project: ");
-            let (key, _) = select_project(&input, &subset, "");
+            let (key, _) = select_project(&input, &subset, "")?;
 
             // Return original key-value pair
-            projects.get_key_value(key).unwrap()
+            Ok(projects.get_key_value(key).unwrap())
         }
     }
 }
@@ -353,41 +346,45 @@ fn user_confirms(prompt: String) -> bool {
 /* Files & Directories */
 
 /// Open path using operating system
-fn open_native(arg: &PathBuf) {
+fn open_native(arg: &PathBuf) -> Result<()> {
     let command = if cfg!(target_os = "macos") {
         "open"
     } else if cfg!(target_os = "linux") {
         "xdg-open"
     } else {
-        eprintln!("Unsupported OS");
-        exit(1);
+        bail!("Unsupported OS");
     };
 
-    let _ = std::process::Command::new(command).arg(arg).spawn();
+    std::process::Command::new(command).arg(arg).spawn()?;
+    Ok(())
 }
 
 /// Get path to data store in user's home directory
-fn get_store_path() -> PathBuf {
-    home_dir().unwrap().join(".fstore")
+fn get_store_path() -> Result<PathBuf> {
+    let home = home_dir().context("Failed to retrieve data store path")?;
+    Ok(home.join(".fstore"))
 }
 
 /// Return current directory
-fn current_dir() -> PathBuf {
-    env::current_dir().expect("Get current directory")
+fn current_dir() -> Result<PathBuf> {
+    env::current_dir().context("Get current directory")
 }
 
 // Returns a path string replacing user's home directory with ~
-fn tilde_path(path: &Path) -> String {
-    let home = home_dir().unwrap_or_default().to_string_lossy().to_string();
-    path.display().to_string().replacen(&home, "~", 1)
+fn tilde_path(path: &Path) -> Result<String> {
+    let home = home_dir()
+        .context("Failed to retrieve user home directory")?
+        .to_string_lossy()
+        .to_string();
+    Ok(path.display().to_string().replacen(&home, "~", 1))
 }
 
 /// Get first file matching extension in directory
-fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
+fn get_file_with_extension(ext: &str, dir: &Path) -> Option<PathBuf> {
     let entries = fs::read_dir(dir).expect("Read directory");
     for entry in entries {
-        let path = entry.unwrap().path();
-        let extension = path.extension().unwrap_or_default();
+        let path = entry.ok()?.path();
+        let extension = path.extension()?;
         if ext == extension {
             return Some(path);
         }
@@ -397,7 +394,7 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
 }
 
 /// Writes a shell command to temporary file to communicate with shell wrapper
-fn send_to_shell(command: &str, path: &Path) {
+fn send_to_shell(command: &str, path: &Path) -> Result<()> {
     let contents = format!("{} '{}'", command, path.display());
-    fs::write("/tmp/fast_cmd", contents).expect("Write to temporary file for shell");
+    fs::write("/tmp/fast_cmd", contents).context("Failed to communicate with shell")
 }
