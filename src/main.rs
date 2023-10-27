@@ -85,9 +85,9 @@ fn parse_args() -> Result<(Command, String)> {
 /* Store */
 
 fn read_projects() -> Result<Projects> {
-    // Return empty map if file does not exist
     let store = get_store_path()?;
     if !store.exists() {
+        // Return empty map if file does not exist
         Ok(Projects::new())
     } else {
         let serialized = fs::read_to_string(store)?;
@@ -98,8 +98,7 @@ fn read_projects() -> Result<Projects> {
 fn write_projects(projects: &Projects) -> Result<()> {
     let store = get_store_path()?;
     let serialized = serde_json::to_string(projects)?;
-    fs::write(store, serialized)?;
-    Ok(())
+    fs::write(store, serialized).context("Failed to write projects to disk")
 }
 
 /* Commands */
@@ -168,12 +167,11 @@ fn open_project(query: &str, projects: &Projects) -> Result<()> {
         println!("Starting \"{}\"...", project);
         set_current_dir(&path)?;
 
-        let mut child = std::process::Command::new("./start").spawn()?;
-
-        child
+        std::process::Command::new("./start")
+            .spawn()?
             .wait()
             .map(|_| ())
-            .map_err(|e| anyhow!("Failed to wait for start script to complete: {}", e))
+            .map_err(|e| anyhow!("Failed to execute start script: {}", e))
     } else if let Some(xcworkspace) = get_file_with_extension("xcworkspace", &path) {
         // Xcode workspace
         println!("Opening \"{}\" in Xcode...", project);
@@ -206,7 +204,7 @@ fn edit_project(query: &str, projects: &Projects) -> Result<()> {
 
 fn reset_projects(projects: &Projects) -> Result<()> {
     if projects.is_empty() {
-        bail!("{}", NO_PROJECTS_ERROR);
+        bail!(NO_PROJECTS_ERROR);
     }
 
     let message = format!("Remove {} saved projects", projects.len());
@@ -221,22 +219,25 @@ fn reset_projects(projects: &Projects) -> Result<()> {
 
 /* Utilities */
 
+type Selection<'a> = Result<(&'a String, &'a PathBuf)>;
+
 /// Selects a project from projects based on query, requesting user for additional input if ambiguous
 /// The lifetime of the returned (project, path) key-value pair is tied to the `projects` map it is retrieved from
-fn select_project<'a>(
-    query: &str,
-    projects: &'a Projects,
-    prompt: &str,
-) -> Result<(&'a String, &'a PathBuf)> {
-    if projects.is_empty() {
-        bail!("{}", NO_PROJECTS_ERROR);
-    }
-
-    // Request user query if none provided
-    if query.is_empty() {
+fn select_project<'a>(query: &str, projects: &'a Projects, prompt: &str) -> Selection<'a> {
+    // Helper method to request user for query
+    fn query_user<'a>(projects: &'a Projects, prompt: &str) -> Selection<'a> {
         print_projects(projects, prompt)?;
         let input = user_input("\nEnter project: ")?;
-        return select_project(&input, projects, "");
+        select_project(&input, projects, prompt)
+    }
+
+    if projects.is_empty() {
+        bail!(NO_PROJECTS_ERROR);
+    }
+
+    // Query user if none provided
+    if query.is_empty() {
+        return query_user(projects, prompt);
     }
 
     // Return exact match if found
@@ -266,11 +267,8 @@ fn select_project<'a>(
             let mut subset = projects.clone();
             subset.retain(|key, _| matches.contains(key));
 
-            print_projects(&subset, prompt)?;
-            let input = user_input("\nEnter project: ")?;
-            let (key, _) = select_project(&input, &subset, "")?;
-
             // Return original key-value pair
+            let (key, _) = query_user(&subset, "")?;
             Ok(projects.get_key_value(key).unwrap())
         }
     }
