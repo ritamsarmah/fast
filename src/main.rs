@@ -7,7 +7,7 @@ use std::env;
 use std::fs;
 use std::io::Write;
 use std::io::{stdin, stdout};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
 enum Command {
@@ -51,7 +51,7 @@ fn parse_args() -> (Command, String) {
         exit(1);
     }
 
-    let has_flag = args.len() > 1 && args[1].starts_with("-");
+    let has_flag = args.len() > 1 && args[1].starts_with('-');
     let (command, query_index) = if has_flag {
         // Parse first argument as a flag, second argument as query
         let command = match args[1].as_ref() {
@@ -377,7 +377,7 @@ fn current_dir() -> PathBuf {
 }
 
 // Returns a path string replacing user's home directory with ~
-fn tilde_path(path: &PathBuf) -> String {
+fn tilde_path(path: &Path) -> String {
     let home = home_dir().unwrap_or_default().to_string_lossy().to_string();
     path.display().to_string().replacen(&home, "~", 1)
 }
@@ -393,11 +393,11 @@ fn get_file_with_extension(ext: &str, dir: &PathBuf) -> Option<PathBuf> {
         }
     }
 
-    return None;
+    None
 }
 
 /// Writes a shell command to temporary file to communicate with shell wrapper
-fn send_to_shell(command: &str, path: &PathBuf) {
+fn send_to_shell(command: &str, path: &Path) {
     let contents = format!("{} '{}'", command, path.display());
     fs::write("/tmp/fast_cmd", contents).expect("Write to temporary file for shell");
 }
