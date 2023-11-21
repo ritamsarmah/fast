@@ -110,7 +110,7 @@ fn load_project(query: &str, projects: &Projects) -> Result<()> {
         bail!("Already in project directory");
     }
 
-    println!("Switching to \"{}\"", project);
+    println!("Switching to \"{project}\"");
     send_to_shell("cd", path)?;
     Ok(())
 }
@@ -124,7 +124,7 @@ fn save_project(query: &str, projects: &mut Projects) -> Result<()> {
 
     let message = format!("Project named \"{}\" already exists. Overwrite", project);
     if !projects.contains_key(&project) || user_confirms(message)? {
-        println!("Saved project \"{}\"", &project);
+        println!("Saved project \"{project}\"");
 
         projects.insert(project, current_dir()?);
         write_projects(projects)
@@ -136,9 +136,9 @@ fn save_project(query: &str, projects: &mut Projects) -> Result<()> {
 fn delete_project(query: &str, projects: &mut Projects) -> Result<()> {
     let (project, _) = select_project(query, projects, "Which project should be deleted?")?;
 
-    let message = format!("Delete \"{}\"", project);
+    let message = format!("Delete \"{project}\"");
     if user_confirms(message)? {
-        println!("Deleted project \"{}\"", project);
+        println!("Deleted project \"{project}\"");
 
         projects.remove(&project.clone());
         write_projects(projects)?
@@ -154,7 +154,7 @@ fn view_project(query: &str, projects: &Projects) -> Result<()> {
         "Which project should open in the file explorer?",
     )?;
 
-    println!("Opening \"{}\" in file explorer...", project);
+    println!("Opening \"{project}\" in file explorer...");
     open_native(path)
 }
 
@@ -164,7 +164,7 @@ fn open_project(query: &str, projects: &Projects) -> Result<()> {
 
     if path.join("start").is_file() {
         // Start script
-        println!("Starting \"{}\"...", project);
+        println!("Starting \"{project}\"...");
         set_current_dir(&path)?;
 
         std::process::Command::new("./start")
@@ -174,11 +174,11 @@ fn open_project(query: &str, projects: &Projects) -> Result<()> {
             .map_err(|e| anyhow!("Failed to execute start script: {}", e))
     } else if let Some(xcworkspace) = get_file_with_extension("xcworkspace", &path) {
         // Xcode workspace
-        println!("Opening \"{}\" in Xcode...", project);
+        println!("Opening \"{project}\" in Xcode...");
         open_native(&xcworkspace)
     } else if let Some(xcodeproj) = get_file_with_extension("xcodeproj", &path) {
         // Xcode project
-        println!("Opening \"{}\" in Xcode...", project);
+        println!("Opening \"{project}\" in Xcode...");
         open_native(&xcodeproj)
     } else {
         bail!(
@@ -302,9 +302,9 @@ fn print_projects(projects: &Projects, prompt: &str) -> Result<()> {
     if prompt.is_empty() {
         let count = projects.len();
         let suffix = if count != 1 { "s" } else { "" };
-        println!("{} project{} found\n", count, suffix);
+        println!("{count} project{suffix} found\n");
     } else {
-        println!("{}\n", prompt);
+        println!("{prompt}\n");
     }
 
     // Print two columns with project name on left in bold and path on right
@@ -326,7 +326,7 @@ fn print_projects(projects: &Projects, prompt: &str) -> Result<()> {
 /* User Input */
 
 fn user_input(prompt: &str) -> Result<String> {
-    print!("{}", prompt);
+    print!("{prompt}");
     stdout().flush()?; // Explicit flush for line-buffered stdout
 
     let mut buffer = String::new();
