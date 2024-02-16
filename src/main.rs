@@ -376,9 +376,10 @@ fn get_file_with_extension(ext: &str, dir: &Path) -> Option<PathBuf> {
     let entries = fs::read_dir(dir).ok()?;
     for entry in entries {
         let path = entry.ok()?.path();
-        let extension = path.extension()?;
-        if ext == extension {
-            return Some(path);
+        if let Some(extension) = path.extension() {
+            if ext == extension {
+                return Some(path);
+            }
         }
     }
 
