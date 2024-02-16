@@ -53,9 +53,9 @@ fn parse_args() -> Result<(Command, String)> {
     }
 
     let has_flag = args.len() > 1 && args[1].starts_with('-');
-    let (command, query_index) = if has_flag {
+    let command = if has_flag {
         // Parse first argument as a flag, second argument as query
-        let command = match args[1].as_ref() {
+        match args[1].as_ref() {
             "-h" | "--help" => Command::Help,
             "-s" | "--save" => Command::Save,
             "-d" | "--delete" => Command::Delete,
@@ -66,15 +66,14 @@ fn parse_args() -> Result<(Command, String)> {
             _ => {
                 bail!("Unrecognized argument provided: {}", args[1]);
             }
-        };
-
-        (command, 2)
+        }
     } else {
         // Parse first argument as query
-        (Command::Load, 1)
+        Command::Load
     };
 
     // Query may or may not be provided
+    let query_index = if has_flag { 2 } else { 1 };
     let query = args
         .get(query_index)
         .map_or_else(String::new, String::to_owned);
@@ -362,7 +361,7 @@ fn get_store_path() -> Result<PathBuf> {
     Ok(home.join(".fstore"))
 }
 
-// Returns a path string replacing user's home directory with ~
+/// Returns a path string replacing user's home directory with ~
 fn tilde_path(path: &Path) -> Result<String> {
     let home = home_dir()
         .context("Failed to retrieve home directory")?
