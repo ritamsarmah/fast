@@ -188,17 +188,13 @@ fn open_project(query: &str, projects: &Projects) -> Result<()> {
 }
 
 fn edit_project(query: &str, projects: &Projects) -> Result<()> {
-    match env::var("EDITOR") {
-        Ok(editor) => {
-            let message = format!("Which project should be opened with {}?", editor);
-            let (_, path) = select_project(query, projects, &message)?;
+    let editor = env::var("EDITOR")
+        .context("No editor configured. Please set the $EDITOR environment variable")?;
 
-            send_to_shell(&editor, path)
-        }
-        Err(_) => {
-            bail!("No editor configured. Please set the $EDITOR environment variable");
-        }
-    }
+    let message = format!("Which project should be opened with {}?", editor);
+    let (_, path) = select_project(query, projects, &message)?;
+
+    send_to_shell(&editor, path)
 }
 
 fn reset_projects(projects: &Projects) -> Result<()> {
