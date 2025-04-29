@@ -1,6 +1,6 @@
-use anyhow::{anyhow, bail, Context, Result};
-use home::home_dir;
+use anyhow::{Context, Result, anyhow, bail};
 use itertools::Itertools;
+use std::env::home_dir;
 
 use std::collections::{HashMap, HashSet};
 use std::env::{self, current_dir, set_current_dir};
