@@ -1,12 +1,11 @@
 use anyhow::{Context, Result, anyhow, bail};
 use itertools::Itertools;
-use std::env::home_dir;
+use nanoserde::{DeJson, SerJson};
 
 use std::collections::{HashMap, HashSet};
-use std::env::{self, current_dir, set_current_dir};
+use std::env::{self, current_dir, home_dir, set_current_dir};
 use std::fs;
-use std::io::Write;
-use std::io::{stdin, stdout};
+use std::io::{Write, stdin, stdout};
 use std::path::{Path, PathBuf};
 
 enum Command {
@@ -90,13 +89,24 @@ fn read_projects() -> Result<Projects> {
         Ok(Projects::new())
     } else {
         let serialized = fs::read_to_string(store)?;
-        serde_json::from_str(&serialized).context("Failed to read projects from disk")
+        let projects = HashMap::<String, String>::deserialize_json(&serialized)
+            .context("Failed to read projects from disk")?
+            .into_iter()
+            .map(|(k, v)| (k, PathBuf::from(v)))
+            .collect();
+
+        Ok(projects)
     }
 }
 
 fn write_projects(projects: &Projects) -> Result<()> {
     let store = get_store_path()?;
-    let serialized = serde_json::to_string(projects)?;
+    let serialized = projects
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string_lossy().into_owned()))
+        .collect::<HashMap<String, String>>()
+        .serialize_json();
+
     fs::write(store, serialized).context("Failed to write projects to disk")
 }
 
