@@ -282,12 +282,10 @@ user_confirms :: proc(prompt: string) -> (confirm: bool, err: os.Error) {
 }
 
 print_projects :: proc(projects: ^Projects, prompt: string) {
-	if prompt == "" {
-		count := len(projects)
-		suffix := count != 1 ? "s" : ""
-		fmt.printf("%v project%v found\n\n", count, suffix)
-	} else {
+	if prompt != "" {
 		fmt.printf("%v\n\n", prompt)
+	} else {
+		fmt.println()
 	}
 
 	padding := 0
@@ -324,6 +322,8 @@ select_project :: proc(
 	}
 
 	query := query
+	prompt := prompt
+
 	matches: Projects
 	defer delete(matches)
 	for key, value in projects do matches[key] = value
@@ -333,6 +333,7 @@ select_project :: proc(
 		for query == "" {
 			print_projects(&matches, prompt)
 			query = user_input("\nEnter project: ") or_return
+			prompt = "" // Clear prompt for next input request
 		}
 
 		// Return exact match with query if found
@@ -359,7 +360,7 @@ select_project :: proc(
 			path = projects[name]
 			return
 		case:
-			// Reset query to request user to disambiguate from matches
+			// Clear query to request user to disambiguate from matches
 			query = ""
 		}
 	}
