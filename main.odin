@@ -368,6 +368,6 @@ select_project :: proc(
 
 // Writes a shell command to temporary file to communicate with shell wrapper
 send_to_shell :: proc(command: string, path: string) -> os.Error {
-	contents := fmt.aprintf("%v '%v'", command, path)
+	contents := fmt.tprintf("%v '%v'", command, path)
 	return os.write_entire_file("/tmp/fast_cmd", contents)
 }
