@@ -1,10 +1,14 @@
-all: build
+.PHONY: all debug release clean
 
-build:
-	odin build . -o:speed
+OUT := fast
+
+all: debug
 
 debug:
-	odin build . -o:minimal
+	odin build . -debug -o:none -out:$(OUT)
+
+release:
+	odin build . -o:speed -out:$(OUT)
 
 clean:
-	rm -f fast
+	rm -f $(OUT)

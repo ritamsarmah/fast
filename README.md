@@ -6,7 +6,7 @@ A minimal command-line tool for quickly opening and interacting with projects.
 
 **fast** requires an [Odin](https://odin-lang.org/) installation in order to build.
 
-1. Run `make` in the project directory.
+1. Run `make release` in the project directory.
 2. Move or link the binary to make it available from your `$PATH` (e.g., `/usr/local/bin`).
 3. Configure the wrapper shell script:
     - `fish`: Move or link `f.fish` to `~/.config/fish/functions`
