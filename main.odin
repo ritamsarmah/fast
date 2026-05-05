@@ -2,7 +2,7 @@ package main
 
 import "core:encoding/json"
 import "core:fmt"
-import os "core:os/os2"
+import "core:os"
 import "core:path/filepath"
 import "core:slice"
 import "core:strings"
