@@ -2,6 +2,7 @@ package main
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "core:path/filepath"
 import "core:slice"
@@ -52,6 +53,25 @@ Any_Error :: union #shared_nil {
 /* Main */
 
 main :: proc() {
+	when ODIN_DEBUG {
+		track: mem.Tracking_Allocator
+		mem.tracking_allocator_init(&track, context.allocator)
+		context.allocator = mem.tracking_allocator(&track)
+
+		defer {
+			if len(track.allocation_map) > 0 {
+				fmt.eprintfln("=== %v allocations not freed: ===", len(track.allocation_map))
+				for _, entry in track.allocation_map {
+					fmt.eprintfln("- %v bytes @ %v", entry.size, entry.location)
+				}
+			} else {
+				fmt.printfln("=== all allocations freed ===")
+			}
+
+			mem.tracking_allocator_destroy(&track)
+		}
+	}
+
 	command, query, parse_err := parse_args()
 	check_error(parse_err)
 
@@ -161,7 +181,7 @@ read_projects :: proc() -> (projects: Projects, err: Any_Error) {
 	if os.exists(path) {
 		data := os.read_entire_file(path, context.allocator) or_return
 		defer delete(data)
-		json.unmarshal(data, &projects) or_return
+		json.unmarshal(data, &projects, allocator = context.temp_allocator) or_return
 	}
 
 	return
@@ -169,7 +189,7 @@ read_projects :: proc() -> (projects: Projects, err: Any_Error) {
 
 write_projects :: proc(projects: ^Projects) -> Any_Error {
 	path := get_store_path() or_return
-	data := json.marshal(projects^) or_return
+	data := json.marshal(projects^, allocator = context.temp_allocator) or_return
 	defer delete(data)
 	return os.write_entire_file(path, data)
 }
