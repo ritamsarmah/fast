@@ -190,7 +190,6 @@ read_projects :: proc() -> (projects: Projects, err: Any_Error) {
 write_projects :: proc(projects: ^Projects) -> Any_Error {
 	path := get_store_path() or_return
 	data := json.marshal(projects^, allocator = context.temp_allocator) or_return
-	defer delete(data)
 	return os.write_entire_file(path, data)
 }
 

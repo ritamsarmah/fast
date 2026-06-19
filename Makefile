@@ -5,7 +5,7 @@ OUT := fast
 all: debug
 
 debug:
-	odin build . -debug -o:none -out:$(OUT)
+	odin build . -debug -out:$(OUT)
 
 release:
 	odin build . -o:speed -out:$(OUT)
